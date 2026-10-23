@@ -76,51 +76,65 @@ class _PlaylistSheetState extends ConsumerState<PlaylistSheet>
       opacity: _fadeAnimation,
       child: Material(
         color: Colors.transparent,
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.5,
-          minChildSize: 0.25,
-          maxChildSize: 0.9,
-          snap: true,
-          snapSizes: const [0.25, 0.5, 0.75, 0.9],
-          builder: (context, scrollController) {
-            final palette = context.appPalette;
-            return ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppTokens.radiusLg),
+        child: Stack(
+          children: [
+            // 空白背板：DraggableScrollableSheet 会撑满整屏高度，把 showModalBottomSheet
+            // 自带的 barrier 顶掉，导致点上半部分空白处没反应（只能系统返回）。
+            // 这里自己补一层可点的透明背板，点一下就收起弹层。
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.of(context).maybePop(),
+                child: const SizedBox.expand(),
               ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: AppTokens.glassBlurSigma,
-                  sigmaY: AppTokens.glassBlurSigma,
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: palette.surfaceOverlay,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(AppTokens.radiusLg),
-                    ),
+            ),
+            DraggableScrollableSheet(
+              initialChildSize: 0.5,
+              minChildSize: 0.25,
+              maxChildSize: 0.9,
+              snap: true,
+              snapSizes: const [0.25, 0.5, 0.75, 0.9],
+              builder: (context, scrollController) {
+                final palette = context.appPalette;
+                return ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(AppTokens.radiusLg),
                   ),
-                  child: Column(
-                    children: [
-                      _buildDragHandle(isDark),
-                      _buildHeader(context, isDark),
-                      Expanded(
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: _buildPlaylist(
-                            context,
-                            scrollController,
-                            currentIndex,
-                            isDark,
-                          ),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: AppTokens.glassBlurSigma,
+                      sigmaY: AppTokens.glassBlurSigma,
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: palette.surfaceOverlay,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(AppTokens.radiusLg),
                         ),
                       ),
-                    ],
+                      child: Column(
+                        children: [
+                          _buildDragHandle(isDark),
+                          _buildHeader(context, isDark),
+                          Expanded(
+                            child: SlideTransition(
+                              position: _slideAnimation,
+                              child: _buildPlaylist(
+                                context,
+                                scrollController,
+                                currentIndex,
+                                isDark,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

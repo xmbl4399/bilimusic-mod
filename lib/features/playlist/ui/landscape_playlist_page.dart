@@ -16,6 +16,7 @@ class LandscapePlaylistPage extends ConsumerWidget {
   final Function(Music)? onRemoveSong;
   final VoidCallback onPlayAll;
   final VoidCallback onShufflePlay;
+  final VoidCallback? onAddToPlaylist;
   final VoidCallback onToggleFavorite;
 
   const LandscapePlaylistPage({
@@ -28,6 +29,7 @@ class LandscapePlaylistPage extends ConsumerWidget {
     this.onRemoveSong,
     required this.onPlayAll,
     required this.onShufflePlay,
+    this.onAddToPlaylist,
     required this.onToggleFavorite,
   });
 
@@ -62,6 +64,7 @@ class LandscapePlaylistPage extends ConsumerWidget {
                       isFavorited: isFavorited,
                       onPlayAll: onPlayAll,
                       onShufflePlay: onShufflePlay,
+                      onAddToPlaylist: onAddToPlaylist,
                       onToggleFavorite: onToggleFavorite,
                     ),
                   ),

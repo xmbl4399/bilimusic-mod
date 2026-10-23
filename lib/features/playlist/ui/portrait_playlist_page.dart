@@ -16,6 +16,7 @@ class PortraitPlaylistPage extends ConsumerWidget {
   final Function(Music)? onRemoveSong;
   final VoidCallback onPlayAll;
   final VoidCallback onShufflePlay;
+  final VoidCallback? onAddToPlaylist;
   final VoidCallback onToggleFavorite;
 
   const PortraitPlaylistPage({
@@ -28,6 +29,7 @@ class PortraitPlaylistPage extends ConsumerWidget {
     this.onRemoveSong,
     required this.onPlayAll,
     required this.onShufflePlay,
+    this.onAddToPlaylist,
     required this.onToggleFavorite,
   });
 
@@ -57,6 +59,7 @@ class PortraitPlaylistPage extends ConsumerWidget {
               isFavorited: isFavorited,
               onPlayAll: onPlayAll,
               onShufflePlay: onShufflePlay,
+              onAddToPlaylist: onAddToPlaylist,
               onToggleFavorite: onToggleFavorite,
             ),
           ),

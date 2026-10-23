@@ -10,6 +10,10 @@ class SearchBarWidget extends StatefulWidget {
   final String hintText;
   final bool showBackButton;
 
+  /// 外部传入的焦点节点：搜索页要据此判断「是否正在输入」，
+  /// 好在输入框下方铺搜索历史。
+  final FocusNode? focusNode;
+
   const SearchBarWidget({
     super.key,
     required this.controller,
@@ -18,6 +22,7 @@ class SearchBarWidget extends StatefulWidget {
     this.autoFocus = false,
     this.hintText = '输入音乐名称、艺术家或BV/AV号',
     this.showBackButton = false,
+    this.focusNode,
   });
 
   @override
@@ -68,6 +73,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
       child: TextField(
         controller: widget.controller,
         autofocus: widget.autoFocus,
+        focusNode: widget.focusNode,
         decoration: InputDecoration(
           hintText: widget.hintText,
           prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
@@ -105,6 +111,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
       child: TextField(
         controller: widget.controller,
         autofocus: widget.autoFocus,
+        focusNode: widget.focusNode,
         decoration: InputDecoration(
           hintText: widget.hintText,
           prefixIcon: widget.showBackButton

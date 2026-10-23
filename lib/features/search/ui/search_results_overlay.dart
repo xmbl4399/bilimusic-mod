@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bilimusic/domain/search_result.dart';
 import 'package:bilimusic/domain/music.dart' as music_model;
 import 'package:bilimusic/app/app_providers.dart';
+import 'package:bilimusic/features/search/search_providers.dart';
 import 'package:bilimusic/features/search/ui/search_type_tabs.dart';
 import 'package:bilimusic/features/search/ui/search_empty_state.dart';
 import 'package:bilimusic/features/playlist/playlist_providers.dart';
@@ -36,8 +37,12 @@ class _SearchResultsOverlayState extends ConsumerState<SearchResultsOverlay> {
 
   // 分P加载状态
   final Map<String, bool> _pagesLoading = {};
-  final Map<String, List<music_model.Page>> _pagesCache = {};
+  Map<String, List<music_model.Page>> _pagesCache = {};
   bool _isPagesLoading = false;
+
+  // 快照：比页面活得久，返回本页时用来免重发请求
+  late final SearchSnapshot _snapshot;
+  final ScrollController _scrollController = ScrollController();
 
   // 防抖
   final _searchSubject = BehaviorSubject<String>();
@@ -53,14 +58,43 @@ class _SearchResultsOverlayState extends ConsumerState<SearchResultsOverlay> {
         .debounceTime(const Duration(milliseconds: 300))
         .listen(_performSearch);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _performSearch(widget.query);
+    // 本页是 AnimatedSwitcher 里的一帧：跳去歌单/详情再返回时整个 State 会被
+    // 重建。命中快照就直接回填（结果 / 分P缓存 / 选中 tab / 滚动位置），
+    // 不再白发一次搜索请求，也不会闪一下转圈把列表滚回顶部。
+    _snapshot = ref.read(searchCacheProvider).of(widget.query);
+    _allResults = _snapshot.results;
+    _pagesCache = _snapshot.pages;
+    _availableTypes = _snapshot.availableTypes;
+    _selectedType = _snapshot.selectedType;
+    _scrollController.addListener(() {
+      _snapshot.scrollOffset = _scrollController.offset;
     });
+
+    if (_snapshot.hasData) {
+      _hasSearched = true;
+      _filteredResults = SearchResult.filterByType(_allResults, _selectedType);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreScroll();
+        _fetchAllPagesWithDelay(_allResults); // 只补抓还没抓到的分P
+      });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _performSearch(widget.query);
+      });
+    }
+  }
+
+  void _restoreScroll() {
+    final offset = _snapshot.scrollOffset;
+    if (offset <= 0 || !_scrollController.hasClients) return;
+    final max = _scrollController.position.maxScrollExtent;
+    _scrollController.jumpTo(offset > max ? max : offset);
   }
 
   @override
   void dispose() {
     _searchSubject.close();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -95,6 +129,10 @@ class _SearchResultsOverlayState extends ConsumerState<SearchResultsOverlay> {
         _filterResults();
       }
     });
+
+    // 写回快照（结果为空时不写，下次进来仍需重试）
+    _snapshot.results = _allResults;
+    _snapshot.availableTypes = _availableTypes;
 
     if (response.results.isNotEmpty) {
       _fetchAllPagesWithDelay(response.results);
@@ -142,6 +180,7 @@ class _SearchResultsOverlayState extends ConsumerState<SearchResultsOverlay> {
   }
 
   void _onTypeChanged(SearchResultType type) {
+    _snapshot.selectedType = type;
     setState(() {
       _selectedType = type;
       _filterResults();
@@ -170,6 +209,7 @@ class _SearchResultsOverlayState extends ConsumerState<SearchResultsOverlay> {
           }
         },
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             _buildAppBar(context, screenSize),
             if (_isLoading)

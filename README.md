@@ -18,6 +18,37 @@
   </p>
 </div>
 
+## 🔀 本 Fork 的改动（相对上游）
+
+> Fork 自 [NaivG/bilimusic](https://github.com/NaivG/bilimusic)。上游其余功能一律保留，只针对 **搜索页** 与 **播放列表交互** 做了 10 处二改（以 Android 端为主）。每一条都在模拟器（720×1280）+ 真机 release 包上完整走过「复现 → 修改 → 回归」。
+>
+> 完整的问题复现、根因与验证步骤见 [`UPSTREAM_IDEAS.md`](./UPSTREAM_IDEAS.md)，可直接当 PR 描述用。
+
+| # | 改了什么 | 类型 |
+|---|---------|------|
+| 1 | 点底部导航「搜索」不再自动弹输入法（只想看一眼榜单时不再被打断） | 体验 |
+| 2 | 搜索页左上角多余的返回箭头已移除（底部导航就在那儿，不需要返回） | 体验 |
+| 3 | 搜索页默认页从空白空状态换成 **B 站「音乐热歌榜」**：一期 20 首、257 期可切、下拉刷新，点任意一首即「整期入队 + 从这首开播」 | 功能 |
+| 4 | 歌单页「添加到播放列表」原本是空实现（`onPressed: () {}`，点了没反应），现已真正把整张歌单追加进队列并去重 | **Bug 修复** |
+| 5 | 搜索结果页返回时不再重新请求（快照缓存 query → 结果 / 分 P / 滚动位置），返回即原样恢复 | **Bug 修复** |
+| 6 | 搜索页往下浏览时搜索框跟随一起滑走，不再钉在顶部 | 体验 |
+| 7 | 迷你播放条点「歌名 / 作者」区域也能进播放页（原来只有封面可点） | 交互一致 |
+| 8 | 播放列表面板点上方空白处即可关闭（原来只能按系统返回） | **Bug 修复** |
+| 9 | 输入法弹出时迷你播放条不再被顶上去，直接被键盘覆盖 | 体验 |
+| 10 | 搜索改成 **悬浮搜索层**：点搜索框即盖在榜单上弹出，带搜索历史（点即搜 / 长按删单条 / 一键清空），系统返回键或点空白处直接关掉 | 功能 |
+
+**关于热歌榜的数据来源**：走 `api.bilibili.com/x/copyright-music-publicity/toplist/{all_period, music_list}`（`list_type=1`，固定 20 首/期）。B 站这些歌曲本身没有音频流，能被播放的是挂在这首歌下的**二创投稿视频**，所以行内展示的是「视频标题 — UP 主 · 时长」，与网页版 <https://www.bilibili.com/v/popular/music> 的行为一致。
+
+**安装**：APK 见 [Releases](https://github.com/xmbl4399/bilimusic/releases)。本 fork 使用独立 keystore 签名，**与上游正式版签名不同**，直接从上游版本覆盖安装会冲突，需先卸载。
+
+**同步上游**：
+
+```bash
+git remote add upstream https://github.com/NaivG/bilimusic.git
+git fetch upstream && git merge upstream/main
+```
+
+---
 
 BiliMusic 是一款围绕 B 站音频内容打造的跨平台音乐播放器。基于 Flutter 一次覆盖 Windows、Linux、Android，对 macOS、iOS 提供实验性支持，同时支持 Xiaomi Vela, Chrome Extension 等平台。
 它不复制视频平台，只做播放器该做的事：搜索、整理、连续播放与跨设备同步。

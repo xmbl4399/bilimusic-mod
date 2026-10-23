@@ -141,6 +141,35 @@ class _PlaylistPageState extends ConsumerState<PlaylistPage> {
     }
   }
 
+  /// 追加到当前播放队列（不清空、不打断正在播放的歌）。
+  ///
+  /// 队列按 (id, cid) 去重，所以重复添加只会补进缺的那几首——
+  /// 提示语用「实际新增数」而不是歌曲总数，避免出现「加了 99 首」却一首没进队列。
+  Future<void> _addAllToPlaylist() async {
+    if (_songs.isEmpty) return;
+
+    final service = ref.read(playlistServiceProvider);
+    final before = service.playlistLength;
+
+    await ref.read(playlistCommandsProvider.notifier).addAllToPlaylist(_songs);
+
+    final added = service.playlistLength - before;
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            added > 0
+                ? '已添加 $added 首到播放列表'
+                : '这 ${_songs.length} 首已经在播放列表里了',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   /// 随机播放
   Future<void> _shufflePlay() async {
     if (_songs.isEmpty) return;
@@ -246,6 +275,7 @@ class _PlaylistPageState extends ConsumerState<PlaylistPage> {
         onRemoveSong: _removeSong,
         onPlayAll: _playAll,
         onShufflePlay: _shufflePlay,
+        onAddToPlaylist: _addAllToPlaylist,
         onToggleFavorite: _toggleFavorite,
       );
     }
@@ -260,6 +290,7 @@ class _PlaylistPageState extends ConsumerState<PlaylistPage> {
       onRemoveSong: _removeSong,
       onPlayAll: _playAll,
       onShufflePlay: _shufflePlay,
+      onAddToPlaylist: _addAllToPlaylist,
       onToggleFavorite: _toggleFavorite,
     );
   }

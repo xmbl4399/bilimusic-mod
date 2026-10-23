@@ -58,6 +58,9 @@ class PortraitShell extends ConsumerWidget {
     final selectedIndex = pageManager.selectedTabIndex;
 
     return Scaffold(
+      // 键盘弹出时不重排布局：迷你播放条/底部导航保持原位、直接被键盘盖住，
+      // 而不是整块被顶到键盘上方（用户明确要求这个行为）。
+      resizeToAvoidBottomInset: false,
       appBar: isPcPlatform
           ? PreferredSize(
               preferredSize: const Size.fromHeight(40),
@@ -113,6 +116,9 @@ class PortraitShell extends ConsumerWidget {
     final selectedIndex = pageManager.selectedTabIndex;
 
     return Scaffold(
+      // 键盘弹出时不重排布局：迷你播放条/底部导航保持原位、直接被键盘盖住，
+      // 而不是整块被顶到键盘上方（用户明确要求这个行为）。
+      resizeToAvoidBottomInset: false,
       appBar: isPcPlatform
           ? PreferredSize(
               preferredSize: const Size.fromHeight(40),

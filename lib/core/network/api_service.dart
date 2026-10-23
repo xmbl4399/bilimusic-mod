@@ -11,6 +11,7 @@ import 'package:bilimusic/domain/bili_fav_resource.dart';
 import 'package:bilimusic/domain/bili_following.dart';
 import 'package:bilimusic/domain/bili_item.dart';
 import 'package:bilimusic/domain/music.dart';
+import 'package:bilimusic/domain/music_toplist.dart';
 import 'package:bilimusic/domain/search_result.dart';
 import 'package:bilimusic/core/network/av_bv.dart';
 
@@ -304,6 +305,196 @@ class ApiService {
       }
     }
     return null;
+  }
+
+  // ====================================================================
+  //  排行榜
+  // ====================================================================
+
+  /// B 站「音乐区排行榜」——与网页 `bilibili.com/v/popular/rank/music`
+  /// 同一份数据（`ranking/v2`，音乐区 rid=3）。
+  ///
+  /// 返回的稿件卡片只带列表字段（标题 / UP 主 / 封面 / 时长），cid 留空，
+  /// 播放时由 `playMusic` 经 [ensureCid] 补齐。
+  Future<List<Music>> fetchMusicRanking({int rid = 3, int limit = 100}) async {
+    final data = await _client.get(
+      '/x/web-interface/ranking/v2',
+      query: {'rid': rid, 'type': 'all'},
+    );
+    if (data is! Map) return const [];
+
+    final list = data['list'];
+    if (list is! List) return const [];
+
+    final result = <Music>[];
+    for (final raw in list) {
+      if (raw is! Map) continue;
+      final music = Music.fromArchiveJson(Map<String, dynamic>.from(raw));
+      if (music.id.isEmpty) continue;
+      result.add(music);
+      if (result.length >= limit) break;
+    }
+    return result;
+  }
+
+  /// 「热歌榜」的全部期数索引（下拉切换期数用）。
+  ///
+  /// `all_period?list_type=1` 按年份分桶返回，这里拍平并按 `list_id` 倒序
+  /// （最新一期在最前面）。**不带 autoDispose 的缓存放在 provider 里**，
+  /// 这个方法每次调用都是一次网络请求。
+  Future<List<MusicToplistPeriod>> fetchMusicToplistPeriods({
+    int listType = 1,
+  }) async {
+    final data = await _client.get(
+      '/x/copyright-music-publicity/toplist/all_period',
+      query: {'list_type': listType},
+    );
+    return _parseToplistPeriods(data);
+  }
+
+  List<MusicToplistPeriod> _parseToplistPeriods(dynamic data) {
+    final periods = <MusicToplistPeriod>[];
+    if (data is! Map) return periods;
+    final byYear = data['list'];
+    if (byYear is! Map) return periods;
+
+    for (final items in byYear.values) {
+      if (items is! List) continue;
+      for (final raw in items) {
+        if (raw is! Map) continue;
+        final id = _asInt(raw['ID']);
+        if (id <= 0) continue;
+        final ts = _asInt(raw['publish_time']);
+        periods.add(
+          MusicToplistPeriod(
+            listId: id,
+            period: _asInt(raw['priod']),
+            publishedAt: ts > 0
+                ? DateTime.fromMillisecondsSinceEpoch(ts * 1000)
+                : null,
+          ),
+        );
+      }
+    }
+    // list_id 随期数递增 → 倒序即「新 → 旧」
+    periods.sort((a, b) => b.listId.compareTo(a.listId));
+    return periods;
+  }
+
+  /// B 站音乐「热歌榜」某一期（版权音乐推广榜）。
+  ///
+  /// 与 `/x/web-interface/ranking/v2` 的区别：那个是**音乐区视频**排行（97 条），
+  /// 这个是**歌**的周榜（20 首，每周五更新），每首歌挂一支「二创投稿视频」
+  /// 作为播放源——榜单本身没有音频（`can_listen` 基本 false，也没有音频流接口）。
+  ///
+  /// [listId] 为空时取最新一期；[listType]：1 = 热歌榜，3 = 二创榜
+  /// （二创榜结构不同，走 `arc_list`，本方法只处理 1）。
+  Future<MusicToplist> fetchMusicHotToplist({
+    int? listId,
+    int listType = 1,
+  }) async {
+    final periods = await fetchMusicToplistPeriods(listType: listType);
+    if (periods.isEmpty) {
+      return const MusicToplist(listId: 0, period: 0, songs: []);
+    }
+
+    final target = listId == null
+        ? periods.first
+        : periods.firstWhere(
+            (p) => p.listId == listId,
+            orElse: () => periods.first,
+          );
+
+    final data = await _client.get(
+      '/x/copyright-music-publicity/toplist/music_list',
+      query: {'list_id': target.listId},
+    );
+    if (data is! Map) {
+      return MusicToplist(
+        listId: target.listId,
+        period: target.period,
+        publishedAt: target.publishedAt,
+        songs: const [],
+      );
+    }
+
+    final list = data['list'];
+    final songs = <MusicToplistSong>[];
+    if (list is List) {
+      for (final raw in list) {
+        if (raw is! Map) continue;
+        final song = _toplistSongFromJson(Map<String, dynamic>.from(raw));
+        if (song != null) songs.add(song);
+      }
+    }
+
+    return MusicToplist(
+      listId: target.listId,
+      period: target.period,
+      publishedAt: target.publishedAt,
+      songs: songs,
+    );
+  }
+
+  /// 热歌榜单条 → 可播放的 [Music]（二创视频） + 榜单元数据。
+  ///
+  /// 标题**不做** TitleMetaFilter 清洗：二创标题里的 emoji / 符号就是它的
+  /// 原文样式，洗掉反而不像 B 站。
+  MusicToplistSong? _toplistSongFromJson(Map<String, dynamic> json) {
+    final bvid = json['creation_bvid']?.toString() ?? '';
+    final cid = _asInt(json['creation_first_cid']);
+    final songTitle = json['music_title']?.toString() ?? '';
+    if (bvid.isEmpty) return null;
+    if (songTitle.isEmpty && (json['creation_title']?.toString().isEmpty ?? true)) {
+      return null;
+    }
+
+    // 接口给的是 http:// 的 CDN 地址，统一升到 https（Android 9+ 默认禁明文）
+    final cover = (json['creation_cover']?.toString() ?? '')
+        .replaceFirst('http://', 'https://');
+    final duration = _asInt(json['creation_duration']);
+
+    final music = Music(
+      id: bvid,
+      cid: cid > 0 ? '$cid' : '',
+      title: json['creation_title']?.toString() ?? songTitle,
+      artist: Artist(
+        mid: _asInt(json['creation_up']),
+        name: json['creation_nickname']?.toString() ?? '',
+      ),
+      album: songTitle,
+      coverUrl: cover.isNotEmpty ? '$cover$biliCoverThumbSuffix' : '',
+      duration: duration > 0 ? Duration(seconds: duration) : null,
+      audioUrl: '',
+    );
+
+    final achievements = json['achievements'];
+    return MusicToplistSong(
+      rank: _asInt(json['rank']),
+      musicId: json['music_id']?.toString() ?? '',
+      songTitle: songTitle,
+      singer: json['singer']?.toString() ?? '',
+      album: json['album']?.toString() ?? '',
+      heat: _asInt(json['heat']),
+      lastRank: _asInt(json['last_rank']),
+      achievements: achievements is List
+          ? achievements
+                .map(
+                  (e) => e is Map
+                      ? (e['name'] ?? e['title'] ?? '').toString()
+                      : e.toString(),
+                )
+                .where((e) => e.isNotEmpty)
+                .toList(growable: false)
+          : const [],
+      music: music,
+    );
+  }
+
+  static int _asInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   // ====================================================================
