@@ -20,7 +20,7 @@
 
 ## 🔀 本 Fork 的改动（相对上游）
 
-> Fork 自 [NaivG/bilimusic](https://github.com/NaivG/bilimusic)。上游其余功能一律保留，只针对 **搜索页** 与 **播放列表交互** 做了 10 处二改（以 Android 端为主）。每一条都在模拟器（720×1280）+ 真机 release 包上完整走过「复现 → 修改 → 回归」。
+> 仓库地址 `xmbl4399/bilimusic-mod`，Fork 自 [NaivG/bilimusic](https://github.com/NaivG/bilimusic)。上游其余功能一律保留，只针对 **搜索页** 与 **播放列表交互** 做了 10 处二改（以 Android 端为主）。每一条都在模拟器（720×1280）+ 真机 release 包上完整走过「复现 → 修改 → 回归」。
 >
 > 完整的问题复现、根因与验证步骤见 [`UPSTREAM_IDEAS.md`](./UPSTREAM_IDEAS.md)，可直接当 PR 描述用。
 
@@ -39,7 +39,7 @@
 
 **关于热歌榜的数据来源**：走 `api.bilibili.com/x/copyright-music-publicity/toplist/{all_period, music_list}`（`list_type=1`，固定 20 首/期）。B 站这些歌曲本身没有音频流，能被播放的是挂在这首歌下的**二创投稿视频**，所以行内展示的是「视频标题 — UP 主 · 时长」，与网页版 <https://www.bilibili.com/v/popular/music> 的行为一致。
 
-**安装**：APK 见 [Releases](https://github.com/xmbl4399/bilimusic/releases)。本 fork 使用独立 keystore 签名，**与上游正式版签名不同**，直接从上游版本覆盖安装会冲突，需先卸载。
+**安装**：APK 见 [Releases](https://github.com/xmbl4399/bilimusic-mod/releases)。本 fork 使用独立 keystore 签名，**与上游正式版签名不同**，直接从上游版本覆盖安装会冲突，需先卸载。
 
 **同步上游**：
 
