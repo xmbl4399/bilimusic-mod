@@ -81,6 +81,8 @@ class _SearchOverlayPanelState extends ConsumerState<SearchOverlayPanel> {
     if (query.isEmpty) return;
     unawaited(ref.read(searchHistoryProvider.notifier).add(query));
     FocusScope.of(context).unfocus();
+    // 搜索在这里发起，结果写进应用级 Provider；结果页只订阅状态（上游架构）
+    ref.read(searchResultsProvider.notifier).search(query);
     ShellPageManager.instance.push(
       ShellPage.searchResults,
       args: {'query': query},

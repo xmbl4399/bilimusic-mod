@@ -11,26 +11,28 @@ class LandscapePlaylistPage extends ConsumerWidget {
   final String? playlistId;
   final List<Music> songs;
   final Playlist? currentPlaylist;
-  final bool isFavorited;
   final Function(Music) onSongTap;
   final Function(Music)? onRemoveSong;
   final VoidCallback onPlayAll;
   final VoidCallback onShufflePlay;
-  final VoidCallback? onAddToPlaylist;
-  final VoidCallback onToggleFavorite;
+  final VoidCallback onAddToPlaylist;
+  final VoidCallback onExportEntries;
+  final VoidCallback onImportEntries;
+  final bool canImportEntries;
 
   const LandscapePlaylistPage({
     super.key,
     this.playlistId,
     required this.songs,
     this.currentPlaylist,
-    this.isFavorited = false,
     required this.onSongTap,
     this.onRemoveSong,
     required this.onPlayAll,
     required this.onShufflePlay,
-    this.onAddToPlaylist,
-    required this.onToggleFavorite,
+    required this.onAddToPlaylist,
+    required this.onExportEntries,
+    required this.onImportEntries,
+    this.canImportEntries = true,
   });
 
   @override
@@ -61,11 +63,12 @@ class LandscapePlaylistPage extends ConsumerWidget {
                           ),
                       songs: songs,
                       isLandscape: true,
-                      isFavorited: isFavorited,
                       onPlayAll: onPlayAll,
                       onShufflePlay: onShufflePlay,
                       onAddToPlaylist: onAddToPlaylist,
-                      onToggleFavorite: onToggleFavorite,
+                      onExportEntries: onExportEntries,
+                      onImportEntries: onImportEntries,
+                      canImportEntries: canImportEntries,
                     ),
                   ),
                   // Divider between hero and track list
